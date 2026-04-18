@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct PauseApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            CloudTaskView()
         }
+        .modelContainer(for: FinishedTask.self)
     }
 }
