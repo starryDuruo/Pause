@@ -32,30 +32,46 @@ struct ConfettiPiece: View {
     }
 }
 
-struct ConfettiPreview: View {
-        @State private var celebrationID = 0
-        
-        var body: some View {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                
+struct Confetti: View {
+    // Internal state to trigger the animation once
+    @State private var hasAppeared = false
+    
+    var body: some View {
+        ZStack {
+            if hasAppeared {
                 ForEach(0..<50, id: \.self) { index in
                     ConfettiPiece()
-                    // This ID trick forces the animation to restart
-                        .id("confetti-\(celebrationID)-\(index)")
-                }
-                
-                VStack{
-                    Spacer()
-                    Button("View Animation") {
-                        celebrationID += 1
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.blue)
                 }
             }
         }
+        .onAppear {
+            hasAppeared = true
+        }
     }
+}
+
+struct ConfettiPreview: View {
+    @State private var testID = 0
+    
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            
+            // Every time testID changes, a "new" Confetti view is created
+            // and its .onAppear fires automatically
+            Confetti()
+                .id(testID)
+            
+            VStack {
+                Spacer()
+                Button("Test Explosion") {
+                    testID += 1
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+}
 
 
 #Preview {

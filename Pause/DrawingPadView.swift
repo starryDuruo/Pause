@@ -9,12 +9,12 @@ import SwiftUI
 import SwiftData
 import PencilKit
 
-struct DrawingView: UIViewRepresentable {
+struct DrawingPadView: UIViewRepresentable {
     @Binding var canvasView: PKCanvasView
     var selectedColor: Color
     var toolType: PKInkingTool.InkType
     var onDrawingChange: () -> Void
-
+    
     func makeUIView(context: Context) -> PKCanvasView {
         canvasView.drawingPolicy = .anyInput
         canvasView.backgroundColor = .clear
@@ -22,29 +22,30 @@ struct DrawingView: UIViewRepresentable {
         canvasView.overrideUserInterfaceStyle = .light
         return canvasView
     }
-
+    
     func updateUIView(_ uiView: PKCanvasView, context: Context) {
         // This updates the brush whenever the color or tool changes in your UI
         uiView.tool = PKInkingTool(toolType, color: UIColor(selectedColor))
     }
     
     func makeCoordinator() -> Coordinator {
-            Coordinator(onDrawingChange: onDrawingChange)
+        Coordinator(onDrawingChange: onDrawingChange)
+    }
+    
+    class Coordinator: NSObject, PKCanvasViewDelegate {
+        var onDrawingChange: () -> Void
+        init(onDrawingChange: @escaping () -> Void) {
+            self.onDrawingChange = onDrawingChange
         }
-
-        class Coordinator: NSObject, PKCanvasViewDelegate {
-            var onDrawingChange: () -> Void
-            init(onDrawingChange: @escaping () -> Void) {
-                self.onDrawingChange = onDrawingChange
-            }
-            // This UIKit function fires whenever a stroke is made or undone
-            func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-                onDrawingChange()
-            }
+        // This UIKit function fires whenever a stroke is made or undone
+        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+            onDrawingChange()
         }
+    }
 }
 
-struct CloudTaskView: View {
+struct DrawingView: View {
+    @Binding var drawing: PKDrawing
     @State private var canvasView = PKCanvasView()
     @State private var selectedColor: Color = .white
     @State private var tool: PKInkingTool.InkType = .watercolor
@@ -53,30 +54,33 @@ struct CloudTaskView: View {
     @Environment(\.modelContext) var modelContext
     // We access the undo manager from the environment
     @Environment(\.undoManager) var undoManager
-
+    
     var body: some View {
         VStack {
-            // ... Your Task Text and DrawingView here ...
-           
-            DrawingView(canvasView: $canvasView,
-                        selectedColor: selectedColor,
-                        toolType: tool){
+            
+            DrawingPadView(canvasView: $canvasView,
+                           selectedColor: selectedColor,
+                           toolType: tool) {
+                drawing = canvasView.drawing
                 canUndo = canvasView.undoManager?.canUndo ?? false
             }
-                .frame(height: 400)
-                .background(Color.blue.opacity(0.3))
-                .cornerRadius(15)
-                .padding()
+
+                        .frame(height: 400)
+                        .cornerRadius(15)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 15)
+                                .stroke(lineWidth: 0.2)
+                        }                        
             
             // Tool Switcher
             HStack(spacing: 20) {
                 Text("Custom color for:")
-                Button("Brush ") {
+                Button("", systemImage: "paintbrush.pointed.fill") {
                     tool = .watercolor
                     selectedColor = .white
                 }
                 
-                Button("Pen") {
+                Button("", systemImage: "pencil.tip") {
                     tool = .pen
                     selectedColor = .gray
                 }
@@ -88,6 +92,7 @@ struct CloudTaskView: View {
             
             // Action Bar
             HStack{
+                Spacer()
                 // UNDO BUTTON
                 Button(action: {
                     undoManager?.undo()
@@ -113,49 +118,25 @@ struct CloudTaskView: View {
                 
                 Spacer()
                 
-                Button {
-                    saveDrawing()
-                } label: {
-                    Label("Done", systemImage: "checkmark.circle.fill")
-                }
-                .disabled(!canUndo)
-                .tint(.green)
-                .buttonStyle(.glassProminent)
-
             }
             .controlSize(.large)
             .padding(.horizontal)
             
             
         }
+        .onChange(of: drawing) { _, newDrawing in
+            canvasView.drawing = newDrawing  // sync the actual PKCanvasView
+        }
     }
-
+    
+    
     func clearCanvas() {
         // This is the cleanest way to clear in PencilKit
         canvasView.drawing = PKDrawing()
     }
-    
-    func saveDrawing() {
-        // 1. Convert the PKDrawing to Data
-        let drawingData = canvasView.drawing.dataRepresentation()
-        
-        // 2. Create a new FinishedTask object
-        let newTask = FinishedTask(
-            taskTitle: "Draw a Cloud",
-            drawingData: drawingData
-        )
-        
-        // 3. Save it to SwiftData
-        modelContext.insert(newTask)
-        
-        // 4. (Optional) Clear the canvas for the next "Pause" session
-        clearCanvas()
-        
-        print("Task saved to your Reality Journal!")
-        
-    }
 }
 
 #Preview {
-    CloudTaskView()
+    DrawingView(drawing: .constant(PKDrawing()))
+        .background(.theme)
 }

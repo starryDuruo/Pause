@@ -13,10 +13,10 @@ import PencilKit
 class FinishedTask {
     var timestamp: Date
     var taskTitle: String
-    var drawingData: Data // This is our drawing saved as bits
+    var drawingData: Data? // This is our drawing saved as bits
     var note: String
     
-    init(taskTitle: String, drawingData: Data, note: String = "") {
+    init(taskTitle: String, drawingData: Data? = nil, note: String = "") {
         self.timestamp = Date()
         self.taskTitle = taskTitle
         self.drawingData = drawingData
